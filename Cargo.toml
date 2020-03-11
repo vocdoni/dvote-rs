@@ -11,7 +11,7 @@ crate-type = ["staticlib", "cdylib"]
 [dependencies]
 hex = "0.4.2"
 base64 = "0.12.0"
-poseidon-rs = { git = "https://github.com/arnaucube/poseidon-rs" }
-za-prover = { git = "https://github.com/adria0/za" }
+poseidon-rs = { git = "https://github.com/arnaucube/poseidon-rs#4cba42e" }
+za-prover = { git = "https://github.com/adria0/za#e3634a3" }
 #libc = "0.2.61"
 #stderrlog = "0.4.1"
