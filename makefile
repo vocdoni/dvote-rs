@@ -26,7 +26,7 @@ help: makefile
 ## init: Install missing dependencies.
 .PHONY: init
 init:
-	rustup target add aarch64-apple-ios armv7-apple-ios armv7s-apple-ios x86_64-apple-ios i386-apple-ios
+	rustup target add aarch64-apple-ios armv7-apple-ios x86_64-apple-ios # armv7s-apple-ios i386-apple-ios
 	rustup target add aarch64-linux-android armv7-linux-androideabi i686-linux-android
 	@if [ $$(uname) == "Darwin" ] ; then cargo install cargo-lipo ; fi
 	cargo install cbindgen
@@ -45,7 +45,7 @@ ios: target/universal/release/libdvote.a
 
 target/universal/release/libdvote.a: $(SOURCES) ndk-home
 	@if [ $$(uname) == "Darwin" ] ; then \
-		cargo lipo --release ; \
+		cargo lipo --release --targets=aarch64-apple-ios,x86_64-apple-ios,armv7-apple-ios ; \
 		else echo "Skipping iOS compilation on $$(uname)" ; \
 	fi
 
