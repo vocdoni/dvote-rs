@@ -161,56 +161,56 @@ mod tests {
     #[test]
     fn should_hash_strings() {
         let str_claim = "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.";
-        let hex_hash = digest_string_claim_inner(str_claim);
+        let b64_hash = digest_string_claim_inner(str_claim);
 
-        assert_eq!(hex_hash, "iV5141xlrW8I217IitUHtoDC/gd/LMsgcF0zpDfUaiM=");
+        assert_eq!(b64_hash, "iV5141xlrW8I217IitUHtoDC/gd/LMsgcF0zpDfUaiM=");
     }
 
     #[test]
     fn should_hash_hex_claims() {
         let hex_claim = "0x045a126cbbd3c66b6d542d40d91085e3f2b5db3bbc8cda0d59615deb08784e4f833e0bb082194790143c3d01cedb4a9663cb8c7bdaaad839cb794dd309213fcf30";
-        let hex_hash = digest_hex_claim_inner(hex_claim);
-        assert_eq!(hex_hash, "nGOYvS4aqqUVAT9YjWcUzA89DlHPWaooNpBTStOaHRA=");
+        let b64_hash = digest_hex_claim_inner(hex_claim);
+        assert_eq!(b64_hash, "nGOYvS4aqqUVAT9YjWcUzA89DlHPWaooNpBTStOaHRA=");
 
         let hex_claim = "0x049969c7741ade2e9f89f81d12080651038838e8089682158f3d892e57609b64e2137463c816e4d52f6688d490c35a0b8e524ac6d9722eed2616dbcaf676fc2578";
-        let hex_hash = digest_hex_claim_inner(hex_claim);
-        assert_eq!(hex_hash, "j7jJlnBN73ORKWbNbVCHG9WkoqSr+IEKDwjcsb6N4xw=");
+        let b64_hash = digest_hex_claim_inner(hex_claim);
+        assert_eq!(b64_hash, "j7jJlnBN73ORKWbNbVCHG9WkoqSr+IEKDwjcsb6N4xw=");
 
         let hex_claim = "0x049622878da186a8a31f4dc03454dbbc62365060458db174618218b51d5014fa56c8ea772234341ae326ce278091c39e30c02fa1f04792035d79311fe3283f1380";
-        let hex_hash = digest_hex_claim_inner(hex_claim);
-        assert_eq!(hex_hash, "6CUGhnmKQchF6Ter05laVgQYcEWm0p2qlLzX24rk3Ck=");
+        let b64_hash = digest_hex_claim_inner(hex_claim);
+        assert_eq!(b64_hash, "6CUGhnmKQchF6Ter05laVgQYcEWm0p2qlLzX24rk3Ck=");
 
         let hex_claim = "0x04e355263aa6cbc99d2fdd0898f5ed8630115ad54e9073c41a8aa0df6d75842d8b8309d0d26a95565996b17da48f8ddff704ebcd1d8a982dc5ba8be7458c677b17";
-        let hex_hash = digest_hex_claim_inner(hex_claim);
-        assert_eq!(hex_hash, "k0UwNtWW4UQifisXuoDiO/QGRZNNTY7giWK1Nx/hoSo=");
+        let b64_hash = digest_hex_claim_inner(hex_claim);
+        assert_eq!(b64_hash, "k0UwNtWW4UQifisXuoDiO/QGRZNNTY7giWK1Nx/hoSo=");
 
         let hex_claim = "0x04020d62c94296539224b885c6cdf79d0c2dd437471425be26bf62ab522949f83f3eed34528b0b9a7fbe96e50ca85471c894e1aa819bbf12ff78ad07ce8b4117b2";
-        let hex_hash = digest_hex_claim_inner(hex_claim);
-        assert_eq!(hex_hash, "5EhP0859lic41RIpIrnotv/BCR7v5nVcXsXkTXlbuhI=");
+        let b64_hash = digest_hex_claim_inner(hex_claim);
+        assert_eq!(b64_hash, "5EhP0859lic41RIpIrnotv/BCR7v5nVcXsXkTXlbuhI=");
 
         let hex_claim = "0x046bd65449f336b888fc36c64708940da0d1c864a0ac46236f60b455841a4d15c9b815ed725093b3266aaca2f15210d14a1eadf34efeda3bd44a803fbf1590cfba";
-        let hex_hash = digest_hex_claim_inner(hex_claim);
-        assert_eq!(hex_hash, "oseI7fM8wWIYslDUOXJne7AOiK+IpFL3q8MTqiZHWw8=");
+        let b64_hash = digest_hex_claim_inner(hex_claim);
+        assert_eq!(b64_hash, "oseI7fM8wWIYslDUOXJne7AOiK+IpFL3q8MTqiZHWw8=");
 
         let hex_claim = "0x0412cf2bd4a9613ad988f7f008a5297b8e8c98df8759a2ef9d3dfae63b3870cfbb78d35789745f82710da61a61a9c06c6f6166bf1d5ce73f9416e6b67713001aa2";
-        let hex_hash = digest_hex_claim_inner(hex_claim);
-        assert_eq!(hex_hash, "9Y3JcjUHZLGmENRQpnML/+TG2EbHWjU46h+LtT9sQi8=");
+        let b64_hash = digest_hex_claim_inner(hex_claim);
+        assert_eq!(b64_hash, "9Y3JcjUHZLGmENRQpnML/+TG2EbHWjU46h+LtT9sQi8=");
 
         let hex_claim = "0x04a2e6914db4a81ea9ec72e71b41cf88d4bc19ea54f29ae2beb3db8e4acf6531b5c163e58427831832b10fce899a030d12e82a398d4eeefe451c7e261fba973be4";
-        let hex_hash = digest_hex_claim_inner(hex_claim);
-        assert_eq!(hex_hash, "Llx5F6lP/hbU6ZTT10Q5PF+7o1VdylvrolT8vSHJMAA=");
+        let b64_hash = digest_hex_claim_inner(hex_claim);
+        assert_eq!(b64_hash, "Llx5F6lP/hbU6ZTT10Q5PF+7o1VdylvrolT8vSHJMAA=");
 
         let hex_claim = "0x041508189a6f1737f50dd2c603c1ded8a83f97073d33cbb317e7409c1487b8351aa2b89455cda61ce8ed3ba3c130372870b187239b900da8948a53ca3e02db9aaf";
-        let hex_hash = digest_hex_claim_inner(hex_claim);
-        assert_eq!(hex_hash, "MyRpb4ZDTwtJNflc8ZbZdmKOf+fuZjUEZkgZMCmlKxw=");
+        let b64_hash = digest_hex_claim_inner(hex_claim);
+        assert_eq!(b64_hash, "MyRpb4ZDTwtJNflc8ZbZdmKOf+fuZjUEZkgZMCmlKxw=");
 
         let hex_claim = "0x04f11597483032666b20ec51b27e1337577f63a5e1d5962575b555bf899380ae15482f031a297094b0c60980f3c4f1f7ad2346de5357ad82a6a3d4eef2bd1956c6";
-        let hex_hash = digest_hex_claim_inner(hex_claim);
-        assert_eq!(hex_hash, "ytwkzcBixiBMsblxEEPpiDFV6MCBG/IY+XUc6/+xIQ8=");
+        let b64_hash = digest_hex_claim_inner(hex_claim);
+        assert_eq!(b64_hash, "ytwkzcBixiBMsblxEEPpiDFV6MCBG/IY+XUc6/+xIQ8=");
 
         let hex_claim = "0x044c01f3d0ef3d60652aa7c6489b2f10edcae1b04a10460ab2d5e4bd752eb0686cac7aa6057fd4c65606e8a4c33c0b519b1764229395cde2c8537ee01136ef0776";
-        let hex_hash = digest_hex_claim_inner(hex_claim);
-        assert_eq!(hex_hash, "VS5c2JQT3x++ltSQHqnCFIBHttdjU2Lk2RuCGkUhnQ8=");
+        let b64_hash = digest_hex_claim_inner(hex_claim);
+        assert_eq!(b64_hash, "VS5c2JQT3x++ltSQHqnCFIBHttdjU2Lk2RuCGkUhnQ8=");
     }
 
     #[test]
@@ -276,70 +276,70 @@ mod tests {
     fn should_match_string_and_hex() {
         let str_claim = "Hello";
         let hex_claim = "48656c6c6f"; // Hello
-        let hex_hash1 = digest_string_claim_inner(str_claim);
-        let hex_hash2 = digest_hex_claim_inner(hex_claim);
-        assert_eq!(hex_hash1, hex_hash2);
+        let b64_hash1 = digest_string_claim_inner(str_claim);
+        let b64_hash2 = digest_hex_claim_inner(hex_claim);
+        assert_eq!(b64_hash1, b64_hash2);
 
         let str_claim = "Hello UTF8 ©âëíòÚ ✨";
         let hex_claim = "48656c6c6f205554463820c2a9c3a2c3abc3adc3b2c39a20e29ca8"; // Hello UTF8 ©âëíòÚ ✨
-        let hex_hash1 = digest_string_claim_inner(str_claim);
-        let hex_hash2 = digest_hex_claim_inner(hex_claim);
-        assert_eq!(hex_hash1, hex_hash2);
+        let b64_hash1 = digest_string_claim_inner(str_claim);
+        let b64_hash2 = digest_hex_claim_inner(hex_claim);
+        assert_eq!(b64_hash1, b64_hash2);
     }
 
     #[test]
     fn should_hash_hex_with_0x() {
-        let hex_hash1 = digest_hex_claim_inner(
+        let b64_hash1 = digest_hex_claim_inner(
             "48656c6c6f48656c6c6f48656c6c6f48656c6c6f48656c6c6f48656c6c6f48656c6c6f",
         );
-        let hex_hash2 = digest_hex_claim_inner(
+        let b64_hash2 = digest_hex_claim_inner(
             "0x48656c6c6f48656c6c6f48656c6c6f48656c6c6f48656c6c6f48656c6c6f48656c6c6f",
         );
-        assert_eq!(hex_hash1, hex_hash2);
+        assert_eq!(b64_hash1, b64_hash2);
 
-        let hex_hash1 = digest_hex_claim_inner(
+        let b64_hash1 = digest_hex_claim_inner(
             "12345678901234567890123456789012345678901234567890123456789012345678901234567890",
         );
-        let hex_hash2 = digest_hex_claim_inner(
+        let b64_hash2 = digest_hex_claim_inner(
             "0x12345678901234567890123456789012345678901234567890123456789012345678901234567890",
         );
-        assert_eq!(hex_hash1, hex_hash2);
+        assert_eq!(b64_hash1, b64_hash2);
 
-        let hex_hash1 = digest_hex_claim_inner(
+        let b64_hash1 = digest_hex_claim_inner(
             "01234567890123456789012345678901234567890123456789012345678901234567890123456789",
         );
-        let hex_hash2 = digest_hex_claim_inner(
+        let b64_hash2 = digest_hex_claim_inner(
             "0x01234567890123456789012345678901234567890123456789012345678901234567890123456789",
         );
-        assert_eq!(hex_hash1, hex_hash2);
+        assert_eq!(b64_hash1, b64_hash2);
 
-        let hex_hash1 = digest_hex_claim_inner(
+        let b64_hash1 = digest_hex_claim_inner(
             "0000000000000000000000000000000000000000000000000000000000000000",
         );
-        let hex_hash2 = digest_hex_claim_inner(
+        let b64_hash2 = digest_hex_claim_inner(
             "0x0000000000000000000000000000000000000000000000000000000000000000",
         );
-        assert_eq!(hex_hash1, hex_hash2);
+        assert_eq!(b64_hash1, b64_hash2);
 
-        let hex_hash1 = digest_hex_claim_inner(
+        let b64_hash1 = digest_hex_claim_inner(
             "8888888888888888888888888888888888888888888888888888888888888888",
         );
-        let hex_hash2 = digest_hex_claim_inner(
+        let b64_hash2 = digest_hex_claim_inner(
             "0x8888888888888888888888888888888888888888888888888888888888888888",
         );
-        assert_eq!(hex_hash1, hex_hash2);
+        assert_eq!(b64_hash1, b64_hash2);
 
-        let hex_hash1 = digest_hex_claim_inner(
+        let b64_hash1 = digest_hex_claim_inner(
             "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
         );
-        let hex_hash2 = digest_hex_claim_inner(
+        let b64_hash2 = digest_hex_claim_inner(
             "0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
         );
-        assert_eq!(hex_hash1, hex_hash2);
+        assert_eq!(b64_hash1, b64_hash2);
 
-        let hex_hash1 = digest_hex_claim_inner("1234567890123456789012345678901234567890");
-        let hex_hash2 = digest_hex_claim_inner("0x1234567890123456789012345678901234567890");
-        assert_eq!(hex_hash1, hex_hash2);
+        let b64_hash1 = digest_hex_claim_inner("1234567890123456789012345678901234567890");
+        let b64_hash2 = digest_hex_claim_inner("0x1234567890123456789012345678901234567890");
+        assert_eq!(b64_hash1, b64_hash2);
     }
 
     #[test]
