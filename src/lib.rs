@@ -1,14 +1,17 @@
 // extern crate stderrlog;
-extern crate za_prover;
+// extern crate za_prover;
 extern crate num_bigint;
 
 use poseidon_rs::Poseidon;
 use std::ffi::{CStr, CString};
 use std::os::raw::c_char;
-use za_prover::groth16;
-use za_prover::groth16::helper;
 
+use bip39::{Language, Mnemonic, MnemonicType, Seed};
 use num_bigint::BigInt;
+use tiny_hderive::bip32::ExtendedPrivKey;
+
+// use za_prover::groth16;
+// use za_prover::groth16::helper;
 
 ///////////////////////////////////////////////////////////////////////////////
 // EXPORTED FUNCTIONS FUNCTIONS
@@ -40,29 +43,29 @@ pub extern "C" fn digest_hex_claim(hex_claim_ptr: *const c_char) -> *mut c_char 
     // NOTE: Caller must free() the resulting pointer
 }
 
-#[no_mangle]
-pub extern "C" fn generate_zk_proof(
-    proving_key_path: *const c_char,
-    inputs: *const c_char,
-) -> *mut c_char {
-    let proving_key_path = unsafe { CStr::from_ptr(proving_key_path) };
-    let proving_key_path = proving_key_path
-        .to_str()
-        .expect("Could not parse proving_key_path");
+// #[no_mangle]
+// pub extern "C" fn generate_zk_proof(
+//     proving_key_path: *const c_char,
+//     inputs: *const c_char,
+// ) -> *mut c_char {
+//     let proving_key_path = unsafe { CStr::from_ptr(proving_key_path) };
+//     let proving_key_path = proving_key_path
+//         .to_str()
+//         .expect("Could not parse proving_key_path");
 
-    let inputs = unsafe { CStr::from_ptr(inputs) };
-    let inputs = inputs.to_str().expect("Could not parse the inputs");
+//     let inputs = unsafe { CStr::from_ptr(inputs) };
+//     let inputs = inputs.to_str().expect("Could not parse the inputs");
 
-    match groth16::flatten_json("main", &inputs)
-        .and_then(|inputs| helper::prove(&proving_key_path, inputs))
-    {
-        Ok(proof) => CString::new(proof).unwrap().into_raw(),
-        Err(err) => CString::new(format!("ERROR: {:?}", err))
-            .unwrap()
-            .into_raw(),
-    }
-    // NOTE: Caller must free() the resulting pointer
-}
+//     match groth16::flatten_json("main", &inputs)
+//         .and_then(|inputs| helper::prove(&proving_key_path, inputs))
+//     {
+//         Ok(proof) => CString::new(proof).unwrap().into_raw(),
+//         Err(err) => CString::new(format!("ERROR: {:?}", err))
+//             .unwrap()
+//             .into_raw(),
+//     }
+//     // NOTE: Caller must free() the resulting pointer
+// }
 
 ///////////////////////////////////////////////////////////////////////////////
 // INTERNAL HANDLERS
@@ -112,6 +115,51 @@ fn digest_hex_claim_inner(hex_claim: &str) -> String {
     };
     let claim_bytes = pad_bigint_le(&hash);
     base64::encode(claim_bytes)
+}
+
+fn generate_mnemonic_inner(size: u16) -> String {
+    let mnemonic = match size {
+        128 => Mnemonic::new(MnemonicType::Words12, Language::English),
+        160 => Mnemonic::new(MnemonicType::Words15, Language::English),
+        192 => Mnemonic::new(MnemonicType::Words18, Language::English),
+        224 => Mnemonic::new(MnemonicType::Words21, Language::English),
+        256 => Mnemonic::new(MnemonicType::Words24, Language::English),
+        _ => return "ERROR: Invalid size".to_string(),
+    };
+
+    mnemonic.phrase().to_string()
+}
+
+fn mnemonic_to_private_key_inner(phrase: &str, hd_path: &str) -> String {
+    let mnemonic = Mnemonic::from_phrase(phrase, Language::English);
+
+    match mnemonic {
+        Err(_) => return "ERROR: Invalid mnemonic".to_string(),
+        _ => {}
+    }
+    let mnemonic = mnemonic.unwrap();
+
+    // get the HD wallet seed
+    let seed = Seed::new(&mnemonic, "");
+    let seed_bytes: &[u8] = seed.as_bytes();
+
+    let secret_key_bytes = match ExtendedPrivKey::derive(seed_bytes, hd_path) {
+        Ok(result) => result,
+        Err(_) => return "ERROR: Invalid HD path".to_string(),
+    };
+
+    // Byte array of the secp256k1 secret key
+    hex::encode(secret_key_bytes.secret())
+}
+
+fn private_key_to_public_key_inner(hex_private_key: &str) -> String {
+    // TODO: implement
+    "".to_string()
+}
+
+fn private_key_to_address_inner(hex_private_key: &str) -> String {
+    // TODO: implement
+    "".to_string()
 }
 
 ///////////////////////////////////////////////////////////////////////////////

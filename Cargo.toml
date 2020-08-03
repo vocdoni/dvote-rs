@@ -10,9 +10,12 @@ crate-type = ["staticlib", "cdylib"]
 
 [dependencies]
 hex = "0.4.2"
-base64 = "0.12.0"
+base64 = "0.12.3"
 poseidon-rs = { git = "https://github.com/arnaucube/poseidon-rs", rev = "4cba42e76ae1bad266bead39499112d4284840a6" }
 num-bigint = "0.2.6"
-za-prover = { git = "https://github.com/adria0/za", rev = "e3634a3" }
+tiny-bip39 = "0.7.3"
+tiny-hderive = "0.2.1"
+secp256k1 = "0.17.2"
+# za-prover = { git = "https://github.com/adria0/za", rev = "e3634a3" }
 #libc = "0.2.61"
 #stderrlog = "0.4.1"
