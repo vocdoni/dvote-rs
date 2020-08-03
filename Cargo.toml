@@ -16,6 +16,8 @@ num-bigint = "0.2.6"
 tiny-bip39 = "0.7.3"
 tiny-hderive = "0.2.1"
 secp256k1 = "0.17.2"
+# ethkey = "0.3.1"
+ethsign = "0.7.3"
 # za-prover = { git = "https://github.com/adria0/za", rev = "e3634a3" }
 #libc = "0.2.61"
 #stderrlog = "0.4.1"

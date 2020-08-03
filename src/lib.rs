@@ -7,7 +7,11 @@ use std::ffi::{CStr, CString};
 use std::os::raw::c_char;
 
 use bip39::{Language, Mnemonic, MnemonicType, Seed};
+// use ethkey::prelude::Address;
+pub use ethsign::{PublicKey, SecretKey, Signature};
+
 use num_bigint::BigInt;
+// use secp256k1::{Message, PublicKey, Secp256k1, SecretKey};
 use tiny_hderive::bip32::ExtendedPrivKey;
 
 // use za_prover::groth16;
@@ -153,14 +157,89 @@ fn mnemonic_to_private_key_inner(phrase: &str, hd_path: &str) -> String {
 }
 
 fn private_key_to_public_key_inner(hex_private_key: &str) -> String {
-    // TODO: implement
-    "".to_string()
+    // Decode hex into a byte array
+    let hex_private_key_clean: &str = if hex_private_key.starts_with("0x") {
+        &hex_private_key[2..] // skip 0x
+    } else {
+        hex_private_key
+    };
+    let private_key_bytes = match hex::decode(hex_private_key_clean) {
+        Ok(v) => v,
+        Err(err) => {
+            return format!(
+                "ERROR: The given private key ({}) is not a valid hex string - {}",
+                hex_private_key, err
+            );
+        }
+    };
+
+    match SecretKey::from_raw(&private_key_bytes) {
+        Ok(key) => hex::encode(key.public().bytes().as_ref()),
+        Err(_) => return "ERROR: Cannot import the raw private key".to_string(),
+    }
+
+    // let secp = Secp256k1::new();
+    // let secret_key = match SecretKey::from_slice(&private_key_bytes) {
+    //     Ok(sk) => sk,
+    //     Err(_) => return "ERROR: 32 bytes, within curve order".to_string(),
+    // };
+    // let pub_key = PublicKey::from_secret_key(&secp, &secret_key);
+    // let pub_key_bytes = pub_key.serialize_uncompressed();
+
+    // hex::encode(pub_key_bytes.as_ref())
 }
 
 fn private_key_to_address_inner(hex_private_key: &str) -> String {
-    // TODO: implement
-    "".to_string()
+    // Decode hex into a byte array
+    let hex_private_key_clean: &str = if hex_private_key.starts_with("0x") {
+        &hex_private_key[2..] // skip 0x
+    } else {
+        hex_private_key
+    };
+    let private_key_bytes = match hex::decode(hex_private_key_clean) {
+        Ok(v) => v,
+        Err(err) => {
+            return format!(
+                "ERROR: The given private key ({}) is not a valid hex string - {}",
+                hex_private_key, err
+            );
+        }
+    };
+
+    match SecretKey::from_raw(&private_key_bytes) {
+        Ok(key) => hex::encode(key.public().address().as_ref()),
+        Err(_) => return "ERROR: Cannot import the raw private key".to_string(),
+    }
 }
+
+// fn sign_message_inner(hex_private_key: &str) -> String {
+//     // Decode hex into a byte array
+//     let hex_private_key_clean: &str = if hex_private_key.starts_with("0x") {
+//         &hex_private_key[2..] // skip 0x
+//     } else {
+//         hex_private_key
+//     };
+//     let private_key_bytes = match hex::decode(hex_private_key_clean) {
+//         Ok(v) => v,
+//         Err(err) => {
+//             return format!(
+//                 "ERROR: The given private key ({}) is not a valid hex string - {}",
+//                 hex_private_key, err
+//             );
+//         }
+//     };
+
+//     let secret_key = match SecretKey::from_raw(&private_key_bytes) {
+//         Ok(key) => key,
+//         Err(_) => return "ERROR: Cannot import the raw private key".to_string(),
+//     };
+
+//     let message = [0_u8; 32];
+//     let signature = secret_key.sign(&message).unwrap();
+
+//     // TODO: Format R,S,V as a hex string
+//     hex::encode(signature)
+// }
 
 ///////////////////////////////////////////////////////////////////////////////
 // HELPERS
