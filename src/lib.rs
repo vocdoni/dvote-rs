@@ -1,5 +1,6 @@
 // extern crate stderrlog;
 // extern crate za_prover;
+extern crate eth_checksum;
 extern crate num_bigint;
 
 use poseidon_rs::Poseidon;
@@ -16,6 +17,8 @@ use tiny_hderive::bip32::ExtendedPrivKey;
 
 // use za_prover::groth16;
 // use za_prover::groth16::helper;
+
+const DEFAULT_HD_PATH: &str = "m/44'/60'/0'/0/0";
 
 ///////////////////////////////////////////////////////////////////////////////
 // EXPORTED FUNCTIONS FUNCTIONS
@@ -41,6 +44,60 @@ pub extern "C" fn digest_hex_claim(hex_claim_ptr: *const c_char) -> *mut c_char 
         .expect("Invalid hex_claim string");
 
     let hex_result = digest_hex_claim_inner(hex_claim);
+
+    CString::new(hex_result).unwrap().into_raw()
+
+    // NOTE: Caller must free() the resulting pointer
+}
+
+#[no_mangle]
+pub extern "C" fn generate_mnemonic(size: i32) -> *mut c_char {
+    let hex_result = generate_mnemonic_inner(size);
+
+    CString::new(hex_result).unwrap().into_raw()
+
+    // NOTE: Caller must free() the resulting pointer
+}
+
+#[no_mangle]
+pub extern "C" fn compute_private_key(
+    mnemonic_ptr: *const c_char,
+    hd_path_ptr: *const c_char,
+) -> *mut c_char {
+    let mnemonic = unsafe { CStr::from_ptr(mnemonic_ptr) }
+        .to_str()
+        .expect("Invalid mnemonic string");
+    let hd_path = unsafe { CStr::from_ptr(hd_path_ptr) }
+        .to_str()
+        .expect("Invalid hd_path string");
+
+    let hex_result = compute_private_key_inner(mnemonic, hd_path);
+
+    CString::new(hex_result).unwrap().into_raw()
+
+    // NOTE: Caller must free() the resulting pointer
+}
+
+#[no_mangle]
+pub extern "C" fn compute_public_key(hex_private_key_ptr: *const c_char) -> *mut c_char {
+    let hex_private_key = unsafe { CStr::from_ptr(hex_private_key_ptr) }
+        .to_str()
+        .expect("Invalid hex_private_key string");
+
+    let hex_result = compute_public_key_inner(hex_private_key);
+
+    CString::new(hex_result).unwrap().into_raw()
+
+    // NOTE: Caller must free() the resulting pointer
+}
+
+#[no_mangle]
+pub extern "C" fn compute_address(hex_private_key_ptr: *const c_char) -> *mut c_char {
+    let hex_private_key = unsafe { CStr::from_ptr(hex_private_key_ptr) }
+        .to_str()
+        .expect("Invalid hex_private_key string");
+
+    let hex_result = compute_address_inner(hex_private_key);
 
     CString::new(hex_result).unwrap().into_raw()
 
@@ -121,7 +178,7 @@ fn digest_hex_claim_inner(hex_claim: &str) -> String {
     base64::encode(claim_bytes)
 }
 
-fn generate_mnemonic_inner(size: u16) -> String {
+fn generate_mnemonic_inner(size: i32) -> String {
     let mnemonic = match size {
         128 => Mnemonic::new(MnemonicType::Words12, Language::English),
         160 => Mnemonic::new(MnemonicType::Words15, Language::English),
@@ -134,7 +191,13 @@ fn generate_mnemonic_inner(size: u16) -> String {
     mnemonic.phrase().to_string()
 }
 
-fn mnemonic_to_private_key_inner(phrase: &str, hd_path: &str) -> String {
+fn compute_private_key_inner(phrase: &str, hd_path: &str) -> String {
+    let hd_path = if hd_path == "" {
+        DEFAULT_HD_PATH
+    } else {
+        hd_path
+    };
+
     let mnemonic = Mnemonic::from_phrase(phrase, Language::English);
 
     match mnemonic {
@@ -156,7 +219,7 @@ fn mnemonic_to_private_key_inner(phrase: &str, hd_path: &str) -> String {
     hex::encode(secret_key_bytes.secret())
 }
 
-fn private_key_to_public_key_inner(hex_private_key: &str) -> String {
+fn compute_public_key_inner(hex_private_key: &str) -> String {
     // Decode hex into a byte array
     let hex_private_key_clean: &str = if hex_private_key.starts_with("0x") {
         &hex_private_key[2..] // skip 0x
@@ -174,7 +237,10 @@ fn private_key_to_public_key_inner(hex_private_key: &str) -> String {
     };
 
     match SecretKey::from_raw(&private_key_bytes) {
-        Ok(key) => hex::encode(key.public().bytes().as_ref()),
+        Ok(key) => {
+            let pub_key = hex::encode(key.public().bytes().as_ref());
+            format!("04{}", &pub_key)
+        }
         Err(_) => return "ERROR: Cannot import the raw private key".to_string(),
     }
 
@@ -189,7 +255,7 @@ fn private_key_to_public_key_inner(hex_private_key: &str) -> String {
     // hex::encode(pub_key_bytes.as_ref())
 }
 
-fn private_key_to_address_inner(hex_private_key: &str) -> String {
+fn compute_address_inner(hex_private_key: &str) -> String {
     // Decode hex into a byte array
     let hex_private_key_clean: &str = if hex_private_key.starts_with("0x") {
         &hex_private_key[2..] // skip 0x
@@ -207,7 +273,10 @@ fn private_key_to_address_inner(hex_private_key: &str) -> String {
     };
 
     match SecretKey::from_raw(&private_key_bytes) {
-        Ok(key) => hex::encode(key.public().address().as_ref()),
+        Ok(key) => {
+            let hex_address = hex::encode(key.public().address().as_ref());
+            eth_checksum::checksum(&hex_address)
+        }
         Err(_) => return "ERROR: Cannot import the raw private key".to_string(),
     }
 }
@@ -284,6 +353,8 @@ pub extern "C" fn free_cstr(string: *mut c_char) {
 mod tests {
     use super::*;
     use num_bigint::{Sign, ToBigInt};
+
+    // POSEIDON HASH
 
     #[test]
     fn should_hash_strings() {
@@ -515,5 +586,149 @@ mod tests {
         assert_eq!(num_bytes_be.len(), 32);
         num_bytes_be.reverse();
         assert_eq!(num_bytes_be, num_bytes_le);
+    }
+
+    // ECDSA / SECP256K1
+
+    #[test]
+    fn should_generate_random_mnemonics() {
+        let mnemonic = generate_mnemonic_inner(128);
+        assert_eq!(
+            mnemonic.split_whitespace().count(),
+            12,
+            "Should contain 12 words"
+        );
+
+        for _ in 0..20 {
+            assert_ne!(
+                mnemonic,
+                generate_mnemonic_inner(128),
+                "Mnemonics should be random"
+            );
+        }
+
+        // All sizes
+
+        assert_eq!(
+            generate_mnemonic_inner(160).split_whitespace().count(),
+            15,
+            "Should contain 15 words"
+        );
+        assert_eq!(
+            generate_mnemonic_inner(192).split_whitespace().count(),
+            18,
+            "Should contain 18 words"
+        );
+        assert_eq!(
+            generate_mnemonic_inner(224).split_whitespace().count(),
+            21,
+            "Should contain 21 words"
+        );
+        assert_eq!(
+            generate_mnemonic_inner(256).split_whitespace().count(),
+            24,
+            "Should contain 24 words"
+        );
+    }
+
+    #[test]
+    fn should_compute_private_public_keys_and_addresses() {
+        let priv_key = compute_private_key_inner(
+            "coral imitate swim axis note super success public poem frown verify then",
+            "",
+        );
+        assert_eq!(
+            priv_key,
+            "975a999c921f77c1812833d903799cdb7780b07809eb67070ac2598f45e9fb3f",
+        );
+        let pub_key = compute_public_key_inner(&priv_key);
+        assert_eq!(pub_key,
+        "046fbd249af1bf365abd8d0cfc390c87ff32a997746c53dceab3794e2913d4cb26e055c8177faab65b404ea24754d8f56ef5df909a39d99ee0e7ca291a11556b37");
+        let address = compute_address_inner(&priv_key);
+        assert_eq!(address, "0x6AAa00b7c22021F96B09BB52cb9135F0cB865c5D");
+
+        let priv_key = compute_private_key_inner(
+            "almost slush girl resource piece meadow cable fancy jar barely mother exhibit",
+            "",
+        );
+        assert_eq!(
+            priv_key,
+            "32fa4a65b9cb770235a8f0af497536035a459a98179c2c667972be279fbd1a1a",
+        );
+        let pub_key = compute_public_key_inner(&priv_key);
+        assert_eq!(pub_key,
+        "0425eb0aac23fe343e7ac5c8a792898a4f1d55b3150f3609cde6b7ada2dff029a89430669dd7f39ffe72eb9b8335fef52fd70863d123ba0015e90cbf68b58385eb");
+
+        let address = compute_address_inner(&priv_key);
+        assert_eq!(address, "0xf0492A8Dc9c84E6c5b66e10D0eC1A46A96FF74D3");
+
+        let priv_key = compute_private_key_inner(
+            "civil very heart sock decade library moment permit retreat unhappy clown infant",
+            "",
+        );
+        assert_eq!(
+            priv_key,
+            "1b3711c03353ecbbf7b686127e30d6a37a296ed797793498ef24c04504ca5048",
+        );
+        let pub_key = compute_public_key_inner(&priv_key);
+        assert_eq!(pub_key,
+        "04ae5f2ecb63c4b9c71e1b396c8206720c02bddceb01da7c9f590aa028f110c035fa54045f6361fa0c6b5914a33e0d6f2f435818f0268ec8196062d1521ea8451a");
+        let address = compute_address_inner(&priv_key);
+        assert_eq!(address, "0x9612bD0deB9129536267d154D672a7f1281eb468");
+
+        let priv_key = compute_private_key_inner(
+            "life noble news naive know verb leaf parade brisk chuckle midnight play",
+            "",
+        );
+        assert_eq!(
+            priv_key,
+            "3c21df88530a25979494c4c7789334ba5dd1c8c73d23c4077a7f223c2274830f",
+        );
+        let pub_key = compute_public_key_inner(&priv_key);
+        assert_eq!(pub_key,
+        "041d792012043464ac528d15e3309d4e55b41205380dfe14a01e2be95a30d0ac80a313dbc6881d5f034c38d091cb27a0301b42faca820274e6a84d2268f8c4f556");
+        let address = compute_address_inner(&priv_key);
+        assert_eq!(address, "0x34E3b8a0299dc7Dc53de09ce8361b41A7D888EC4");
+    }
+
+    #[test]
+    fn should_derive_keys_using_hd_path() {
+        let mnemonic =
+            "civil very heart sock decade library moment permit retreat unhappy clown infant";
+        // index 0
+        let priv_key = compute_private_key_inner(mnemonic, "m/44'/60'/0'/0/0");
+        assert_eq!(
+            priv_key,
+            "1b3711c03353ecbbf7b686127e30d6a37a296ed797793498ef24c04504ca5048",
+        );
+        let pub_key = compute_public_key_inner(&priv_key);
+        assert_eq!(pub_key,
+        "04ae5f2ecb63c4b9c71e1b396c8206720c02bddceb01da7c9f590aa028f110c035fa54045f6361fa0c6b5914a33e0d6f2f435818f0268ec8196062d1521ea8451a");
+        let address = compute_address_inner(&priv_key);
+        assert_eq!(address, "0x9612bD0deB9129536267d154D672a7f1281eb468");
+
+        // index 1
+        let priv_key = compute_private_key_inner(mnemonic, "m/44'/60'/0'/0/1");
+        assert_eq!(
+            priv_key,
+            "2b8642b869998d77243669463b68058299260349eba6c893d892d4b74eae95d4",
+        );
+        let pub_key = compute_public_key_inner(&priv_key);
+        assert_eq!(pub_key,
+        "04d8b869ceb2d90c2ab0b0eecd2f4215f42cb40a82e7de854ca14e85a1a84e00a45e1c37334666acb08b62b19f42c18524d9d5952fb43054363350820f5190f17d");
+        let address = compute_address_inner(&priv_key);
+        assert_eq!(address, "0x67b5615fDC5c65Afce9B97bD217804f1dB04bC1b");
+
+        // index 2
+        let priv_key = compute_private_key_inner(mnemonic, "m/44'/60'/0'/0/2");
+        assert_eq!(
+            priv_key,
+            "562870cd36727fdca458ada4c2a34e0170b7b4cc4d3dc3b60cba3582bf8c3167",
+        );
+        let pub_key = compute_public_key_inner(&priv_key);
+        assert_eq!(pub_key,
+        "04887f399e99ce751f82f73a9a88ab015db74b40f707534f54a807fa6e10982cbfaffe93414466b347b83cd43bc0d1a147443576446b49d0e3d6db24f37fe02567");
+        let address = compute_address_inner(&priv_key);
+        assert_eq!(address, "0x0887fb27273A36b2A641841Bf9b47470d5C0E420");
     }
 }
