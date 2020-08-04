@@ -3,7 +3,7 @@ extern crate eth_checksum;
 extern crate num_bigint;
 use sha3::{Digest, Keccak256};
 extern crate secp256k1;
-// extern crate za_prover;
+extern crate za_prover;
 
 use poseidon_rs::Poseidon;
 use std::ffi::{CStr, CString};
@@ -17,8 +17,8 @@ use num_bigint::BigInt;
 // use secp256k1::{Message, Secp256k1, Signature};
 use tiny_hderive::bip32::ExtendedPrivKey;
 
-// use za_prover::groth16;
-// use za_prover::groth16::helper;
+use za_prover::groth16;
+use za_prover::groth16::helper;
 
 const DEFAULT_HD_PATH: &str = "m/44'/60'/0'/0/0";
 const ETHEREUM_SIGNATURE_PREFIX: &str = "\x19Ethereum Signed Message:\n";
@@ -126,29 +126,29 @@ pub extern "C" fn sign_message(
     // NOTE: Caller must free() the resulting pointer
 }
 
-// #[no_mangle]
-// pub extern "C" fn generate_zk_proof(
-//     proving_key_path: *const c_char,
-//     inputs: *const c_char,
-// ) -> *mut c_char {
-//     let proving_key_path = unsafe { CStr::from_ptr(proving_key_path) };
-//     let proving_key_path = proving_key_path
-//         .to_str()
-//         .expect("Could not parse proving_key_path");
+#[no_mangle]
+pub extern "C" fn generate_zk_proof(
+    proving_key_path: *const c_char,
+    inputs: *const c_char,
+) -> *mut c_char {
+    let proving_key_path = unsafe { CStr::from_ptr(proving_key_path) };
+    let proving_key_path = proving_key_path
+        .to_str()
+        .expect("Could not parse proving_key_path");
 
-//     let inputs = unsafe { CStr::from_ptr(inputs) };
-//     let inputs = inputs.to_str().expect("Could not parse the inputs");
+    let inputs = unsafe { CStr::from_ptr(inputs) };
+    let inputs = inputs.to_str().expect("Could not parse the inputs");
 
-//     match groth16::flatten_json("main", &inputs)
-//         .and_then(|inputs| helper::prove(&proving_key_path, inputs))
-//     {
-//         Ok(proof) => CString::new(proof).unwrap().into_raw(),
-//         Err(err) => CString::new(format!("ERROR: {:?}", err))
-//             .unwrap()
-//             .into_raw(),
-//     }
-//     // NOTE: Caller must free() the resulting pointer
-// }
+    match groth16::flatten_json("main", &inputs)
+        .and_then(|inputs| helper::prove(&proving_key_path, inputs))
+    {
+        Ok(proof) => CString::new(proof).unwrap().into_raw(),
+        Err(err) => CString::new(format!("ERROR: {:?}", err))
+            .unwrap()
+            .into_raw(),
+    }
+    // NOTE: Caller must free() the resulting pointer
+}
 
 ///////////////////////////////////////////////////////////////////////////////
 // INTERNAL HANDLERS

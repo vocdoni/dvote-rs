@@ -21,6 +21,6 @@ eth_checksum = "0.1.1"
 sha3 = "0.9.1"
 # rust-crypto = "0.2.36"
 # ethkey = "0.3.1"
-# za-prover = { git = "https://github.com/adria0/za", rev = "e3634a3" }
+za-prover = { git = "https://github.com/adria0/za", rev = "e3634a3" }
 #libc = "0.2.61"
 #stderrlog = "0.4.1"
