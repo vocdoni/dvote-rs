@@ -1,8 +1,7 @@
 // extern crate stderrlog;
-extern crate eth_checksum;
 extern crate num_bigint;
 use sha3::{Digest, Keccak256};
-extern crate secp256k1;
+// extern crate secp256k1;
 extern crate za_prover;
 
 use poseidon_rs::Poseidon;
@@ -10,7 +9,6 @@ use std::ffi::{CStr, CString};
 use std::os::raw::c_char;
 
 use bip39::{Language, Mnemonic, MnemonicType, Seed};
-// use ethkey::prelude::Address;
 pub use ethsign::{PublicKey, SecretKey};
 
 use num_bigint::BigInt;
@@ -294,14 +292,13 @@ fn compute_address_inner(hex_private_key: &str) -> String {
         }
     };
 
-    match SecretKey::from_raw(&private_key_bytes) {
-        Ok(key) => {
-            let hex_address = hex::encode(key.public().address().as_ref());
-            eth_checksum::checksum(&hex_address)
-        }
+    let hex_address = match SecretKey::from_raw(&private_key_bytes) {
+        Ok(key) => hex::encode(key.public().address().as_ref()),
         Err(_) => return "ERROR: Cannot import the raw private key".to_string(),
+    };
+
+    checksum_ethereum_address(&hex_address)
     }
-}
 
 fn sign_message_inner(message: &str, hex_private_key: &str) -> String {
     // Decode hex into a byte array
@@ -367,6 +364,38 @@ fn pad_bigint_be(num: &BigInt) -> Vec<u8> {
         claim_bytes = [&[0], &claim_bytes[..]].concat();
     }
     claim_bytes
+}
+
+fn checksum_ethereum_address(hex_address: &str) -> String {
+    let hex_address: &str = if hex_address.starts_with("0x") {
+        &hex_address[2..] // skip 0x
+    } else {
+        hex_address
+    };
+    hex::decode(&hex_address).expect("The given address is an invalid hex value");
+
+    // Hash the address bytes
+    let mut hasher = Keccak256::new();
+    hasher.update(hex_address.as_bytes());
+    let address_hash_bytes = hasher.finalize();
+    let hex_address_hash = hex::encode(address_hash_bytes);
+
+    let mut result = "0x".to_string();
+    let hash_chars = hex_address_hash.chars().collect::<Vec<char>>();
+    let addr_chars = hex_address.chars().collect::<Vec<char>>();
+
+    // Process the chars according to the hash
+    for i in 0..addr_chars.len() {
+        let n = i64::from_str_radix(&hash_chars[i].to_string(), 16).unwrap();
+        let ch = addr_chars[i];
+
+        if n <= 7 {
+            result = format!("{}{}", result, ch.to_string());
+        } else {
+            result = format!("{}{}", result, ch.to_uppercase().to_string());
+        }
+    }
+    result
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -768,6 +797,45 @@ mod tests {
         "04887f399e99ce751f82f73a9a88ab015db74b40f707534f54a807fa6e10982cbfaffe93414466b347b83cd43bc0d1a147443576446b49d0e3d6db24f37fe02567");
         let address = compute_address_inner(&priv_key);
         assert_eq!(address, "0x0887fb27273A36b2A641841Bf9b47470d5C0E420");
+    }
+
+    #[test]
+    fn should_compute_addresses_with_checksum() {
+        let address = "0x6cf64a4463e7ee29d6d102020d66a02ff35e4e5f";
+        assert_eq!(
+            checksum_ethereum_address(&address),
+            "0x6cF64a4463e7ee29D6D102020D66a02FF35e4e5F",
+        );
+        let address = "0xd083e49a904da3fc5b6e4ff05aacb408b3ec6f05";
+        assert_eq!(
+            checksum_ethereum_address(&address),
+            "0xd083e49a904DA3Fc5B6e4ff05AACb408B3EC6F05",
+        );
+        let address = "0x82b646a72dfa7a43989ef65c8f2af05914b57c3b";
+        assert_eq!(
+            checksum_ethereum_address(&address),
+            "0x82b646A72DFa7a43989ef65C8f2Af05914b57c3B",
+        );
+        let address = "0xfda3e74cff68260dcbc67a1b196106bc4946da05";
+        assert_eq!(
+            checksum_ethereum_address(&address),
+            "0xFDA3E74CFF68260dCbc67a1b196106bc4946da05",
+        );
+        let address = "0xf9312824eb6369e1745c01415a06bd47c2931211";
+        assert_eq!(
+            checksum_ethereum_address(&address),
+            "0xf9312824eb6369E1745c01415a06Bd47c2931211",
+        );
+        let address = "0x6f96da6345d4a01ff0f8250dc4b9b13d2d49b6db";
+        assert_eq!(
+            checksum_ethereum_address(&address),
+            "0x6F96da6345D4A01ff0F8250Dc4B9b13d2d49B6DB",
+        );
+        let address = "0xecf9ddfc1c433078276a8c5ef76a1a827978362e";
+        assert_eq!(
+            checksum_ethereum_address(&address),
+            "0xECF9ddfc1C433078276a8C5EF76a1A827978362e",
+        );
     }
 
     #[test]
