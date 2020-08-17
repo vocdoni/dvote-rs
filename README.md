@@ -7,9 +7,15 @@ This repository is intended to generate the libraries needed by DVote Flutter Na
 The functions currently available are: 
 
 ```C
+char *generate_mnemonic(int32_t size);
+char *compute_private_key(const char *mnemonic_ptr, const char *hd_path_ptr);
+char *compute_public_key(const char *hex_private_key_ptr);
+char *compute_address(const char *hex_private_key_ptr);
 char *digest_hex_claim(const char *hex_claim_ptr);
 char *digest_string_claim(const char *str_claim_ptr);
 char *generate_zk_proof(const char *proving_key_path, const char *inputs);
+char *sign_message(const char *message_ptr, const char *hex_private_key_ptr);
+
 void free_cstr(char *string);
 ```
 
@@ -17,6 +23,8 @@ void free_cstr(char *string);
 
 - Install Rust and Cargo
 - Install the Android NDK on Linux or MacOS
+  - Ensure that `ANDROID_NDK_HOME` points to your NDK folder
+  - On Linux, make sure that `ANDROID_NDK_HOME` targets the specific version folder, like `Android/sdk/ndk-bundle/21.1.6352462`
 - Install XCode if you are targeting iOS from MacOS
 - Run `make init`
 - Run `make all`
