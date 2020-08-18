@@ -1,20 +1,15 @@
 // extern crate stderrlog;
 extern crate num_bigint;
-use sha3::{Digest, Keccak256};
-// extern crate secp256k1;
 extern crate za_prover;
 
+use bip39::{Language, Mnemonic, MnemonicType, Seed};
+use ethsign::SecretKey;
+use num_bigint::BigInt;
 use poseidon_rs::Poseidon;
+use sha3::{Digest, Keccak256};
 use std::ffi::{CStr, CString};
 use std::os::raw::c_char;
-
-use bip39::{Language, Mnemonic, MnemonicType, Seed};
-pub use ethsign::{PublicKey, SecretKey};
-
-use num_bigint::BigInt;
-// use secp256k1::{Message, Secp256k1, Signature};
 use tiny_hderive::bip32::ExtendedPrivKey;
-
 use za_prover::groth16;
 use za_prover::groth16::helper;
 
@@ -132,6 +127,45 @@ pub extern "C" fn sign_message(
 }
 
 #[no_mangle]
+pub extern "C" fn recover_message_signer(
+    hex_signature_ptr: *const c_char,
+    message_ptr: *const c_char,
+) -> *mut c_char {
+    let hex_signature = unsafe { CStr::from_ptr(hex_signature_ptr) }
+        .to_str()
+        .expect("Invalid hex_signature string");
+    let message = unsafe { CStr::from_ptr(message_ptr) }
+        .to_str()
+        .expect("Invalid message string");
+
+    let result = recover_message_signer_inner(hex_signature, message)
+        .unwrap_or_else(|err| format!("ERROR: {}", err));
+
+    CString::new(result).unwrap().into_raw()
+
+    // NOTE: Caller must free() the resulting pointer
+}
+
+#[no_mangle]
+pub extern "C" fn is_valid_signature(
+    hex_signature_ptr: *const c_char,
+    message_ptr: *const c_char,
+    hex_public_key_ptr: *const c_char,
+) -> bool {
+    let hex_signature = unsafe { CStr::from_ptr(hex_signature_ptr) }
+        .to_str()
+        .expect("Invalid hex_signature string");
+    let message = unsafe { CStr::from_ptr(message_ptr) }
+        .to_str()
+        .expect("Invalid message string");
+    let hex_public_key = unsafe { CStr::from_ptr(hex_public_key_ptr) }
+        .to_str()
+        .expect("Invalid hex_public_key string");
+
+    is_valid_signature_inner(hex_signature, message, hex_public_key)
+}
+
+#[no_mangle]
 pub extern "C" fn generate_zk_proof(
     proving_key_path: *const c_char,
     inputs: *const c_char,
@@ -170,19 +204,7 @@ fn digest_string_claim_inner(claim: &str) -> StringResult {
 }
 
 fn digest_hex_claim_inner(hex_claim: &str) -> StringResult {
-    // Decode hex into a byte array
-    let hex_claim_clean: &str = if hex_claim.starts_with("0x") {
-        &hex_claim[2..] // skip 0x
-    } else {
-        hex_claim
-    };
-
-    let claim_bytes = hex::decode(hex_claim_clean).map_err(|err| {
-        format!(
-            "The given claim ({}) is not a valid hex string - {}",
-            hex_claim, err
-        )
-    })?;
+    let claim_bytes = decode_hex_string(hex_claim)?;
 
     // Hash
     let poseidon = Poseidon::new();
@@ -225,52 +247,20 @@ fn compute_private_key_inner(phrase: &str, hd_path: &str) -> StringResult {
 }
 
 fn compute_public_key_inner(hex_private_key: &str) -> StringResult {
-    // Decode hex into a byte array
-    let hex_private_key_clean: &str = if hex_private_key.starts_with("0x") {
-        &hex_private_key[2..] // skip 0x
-    } else {
-        hex_private_key
-    };
-    let private_key_bytes = hex::decode(hex_private_key_clean).map_err(|err| {
-        format!(
-            "The given private key ({}) is not a valid hex string - {}",
-            hex_private_key, err
-        )
-    })?;
+    let private_key_bytes = decode_hex_string(hex_private_key)?;
 
     let key = SecretKey::from_raw(&private_key_bytes)
         .map_err(|err| format!("Cannot import the raw private key: {}", err))?;
 
     let pub_key = hex::encode(key.public().bytes().as_ref());
     Ok(format!("04{}", &pub_key))
-
-    // let secp = Secp256k1::new();
-    // let secret_key = match SecretKey::from_slice(&private_key_bytes) {
-    //     Ok(sk) => sk,
-    //     Err(_) => return "ERROR: 32 bytes, within curve order".to_string(),
-    // };
-    // let pub_key = PublicKey::from_secret_key(&secp, &secret_key);
-    // let pub_key_bytes = pub_key.serialize_uncompressed();
-
-    // hex::encode(pub_key_bytes.as_ref())
 }
 
 fn compute_address_inner(hex_private_key: &str) -> StringResult {
-    // Decode hex into a byte array
-    let hex_private_key_clean: &str = if hex_private_key.starts_with("0x") {
-        &hex_private_key[2..] // skip 0x
-    } else {
-        hex_private_key
-    };
-    let private_key_bytes = hex::decode(hex_private_key_clean).map_err(|err| {
-        format!(
-            "The given private key ({}) is not a valid hex string - {}",
-            hex_private_key, err
-        )
-    })?;
+    let private_key_bytes = decode_hex_string(hex_private_key)?;
 
     let key = SecretKey::from_raw(&private_key_bytes)
-        .map_err(|_| "ERROR: Cannot import the raw private key".to_string())?;
+        .map_err(|_| "Cannot import the raw private key".to_string())?;
     let hex_address = hex::encode(key.public().address().as_ref());
 
     // Apply the checksum
@@ -279,44 +269,62 @@ fn compute_address_inner(hex_private_key: &str) -> StringResult {
 }
 
 fn sign_message_inner(message: &str, hex_private_key: &str) -> StringResult {
-    // Decode hex into a byte array
-    let hex_private_key_clean: &str = if hex_private_key.starts_with("0x") {
-        &hex_private_key[2..] // skip 0x
-    } else {
-        hex_private_key
-    };
-    let private_key_bytes = hex::decode(hex_private_key_clean).map_err(|err| {
-        format!(
-            "The given private key ({}) is not a valid hex string - {}",
-            hex_private_key, err
-        )
-    })?;
+    let private_key_bytes = decode_hex_string(hex_private_key)?;
 
     let secret_key = SecretKey::from_raw(&private_key_bytes)
-        .map_err(|_| "ERROR: Cannot import the raw private key".to_string())?;
-    let payload = pack_payload_to_sign(message);
+        .map_err(|_| "Cannot import the raw private key".to_string())?;
 
-    // hash the bytes
-    let mut hasher = Keccak256::new();
-    hasher.update(payload);
-    let result = hasher.finalize();
+    let payload_hash = hash_message_for_signature(message);
 
     // sign the hash
-    let signature = secret_key.sign(&result).unwrap();
+    let signature = secret_key.sign(&payload_hash).unwrap();
 
     // Format R,S,V as a hex string
     let v: &[u8] = &[signature.v + 0x1b]; // NOTE: ChainID is not considered at this point
-    let result_bytes = [&signature.r[..], &signature.s[..], &v[..]].concat();
-    Ok(hex::encode(result_bytes))
+    let signature_bytes = [&signature.r[..], &signature.s[..], &v[..]].concat();
+    Ok(hex::encode(signature_bytes))
 }
 
-// fn is_valid_signature_inner(signature: &str, message: &str, hex_signature: &str) -> bool {
-//     let secp = Secp256k1::verification_only();
-//     let sig = Signature::from_str(signature);
-//     let message = Message::from_slice(message.as_bytes()).expect("Could not extract the message");
+fn recover_message_signer_inner(hex_signature: &str, message: &str) -> StringResult {
+    let signature = decode_hex_string(hex_signature)?;
 
-//     secp.verify(&message, &sig, &public_key).is_ok()
-// }
+    if signature.len() != 65 {
+        return Err("Signature length should be 65 bytes".to_string());
+    }
+
+    let mut r: [u8; 32] = [0; 32];
+    r.copy_from_slice(&signature[0..32]);
+    let mut s: [u8; 32] = [0; 32];
+    s.copy_from_slice(&signature[32..64]);
+    if signature[64] < 0x1b {
+        return Err("V should be either 0x1b or 0x1c".to_string());
+    }
+    let v: u8 = signature[64] - 0x1b;
+
+    let signature = ethsign::Signature { r, s, v };
+    let payload_hash = hash_message_for_signature(message);
+
+    let public_key = signature
+        .recover(&payload_hash)
+        .map_err(|err| format!("Cannot recover the public key: {}", err))?;
+
+    let public_key = hex::encode(public_key.bytes().as_ref());
+    Ok(format!("04{}", public_key))
+}
+
+fn is_valid_signature_inner(hex_signature: &str, message: &str, hex_public_key: &str) -> bool {
+    // skip 0x
+    let hex_public_key: &str = if hex_public_key.starts_with("0x") {
+        &hex_public_key[2..]
+    } else {
+        hex_public_key
+    };
+
+    match recover_message_signer_inner(hex_signature, message) {
+        Ok(recovered_public_key) => hex_public_key == recovered_public_key,
+        Err(_) => false,
+    }
+}
 
 ///////////////////////////////////////////////////////////////////////////////
 // HELPERS
@@ -337,6 +345,18 @@ fn pad_bigint_be(num: &BigInt) -> Vec<u8> {
         claim_bytes = [&[0], &claim_bytes[..]].concat();
     }
     claim_bytes
+}
+
+fn decode_hex_string(hex_string: &str) -> Result<Vec<u8>, String> {
+    // skip 0x
+    let hex_string: &str = if hex_string.starts_with("0x") {
+        &hex_string[2..]
+    } else {
+        hex_string
+    };
+
+    hex::decode(hex_string)
+        .map_err(|err| format!("The given value is not a valid hex string: {}", err))
 }
 
 fn checksum_ethereum_address(hex_address: &str) -> StringResult {
@@ -373,11 +393,20 @@ fn checksum_ethereum_address(hex_address: &str) -> StringResult {
     Ok(result)
 }
 
-fn pack_payload_to_sign(payload: &str) -> Vec<u8> {
+fn pack_message_for_signature(payload: &str) -> Vec<u8> {
     let prefix: String = format!("{}{}", ETHEREUM_SIGNATURE_PREFIX, payload.len());
     let prefix: &[u8] = prefix.as_bytes();
     let payload: &[u8] = payload.as_bytes();
     [prefix, payload].concat()
+}
+
+fn hash_message_for_signature(payload: &str) -> Vec<u8> {
+    let payload = pack_message_for_signature(payload);
+    let mut hasher = Keccak256::new();
+    hasher.update(payload);
+    let payload_hash = hasher.finalize();
+
+    Vec::from(payload_hash.as_slice())
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -840,21 +869,91 @@ mod tests {
     fn should_sign_string_messages() {
         let mnemonic =
             "poverty castle step need baby chair measure leader dress print cruise baby avoid fee sock shoulder rate opinion";
-        let mut message = "hello";
+        let message = "hello";
 
         let priv_key = compute_private_key_inner(mnemonic, "").unwrap();
         assert_eq!(
             priv_key,
             "e8088b11cdf79dab6919103720a424e33ffb68d7f272432e2798f1eaf346967c",
         );
-        let mut signature = sign_message_inner(message, &priv_key).unwrap();
+        let signature = sign_message_inner(message, &priv_key).unwrap();
 
         assert_eq!(signature,
         "9d06b4f31641aba791bb79dfb211c1141c4b3e346f230c05256c657c5c10916229a8f4cee40bfdbe0d90061d60e712ec5ec0c59cb90321814848ec2f6f7763181b");
 
-        message = "àèìòù";
-        signature = sign_message_inner(message, &priv_key).unwrap();
+        let message = "àèìòù";
+        let signature = sign_message_inner(message, &priv_key).unwrap();
         assert_eq!(signature,
         "2cbf9ae0de3df7e975b68b4cf67e14a0b49a1f8ed5d54c6c13d2ff936585036232fb53846fd49331bf8832fcd7e4517c3f07c951b95d5e0e102e572bbbadda811c");
+    }
+
+    #[test]
+    fn should_verify_valid_signatures() {
+        let mnemonic =
+            "poverty castle step need baby chair measure leader dress print cruise baby avoid fee sock shoulder rate opinion";
+        let message = "hello";
+        let replacements = vec![
+            "0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "a", "b", "c", "d", "e", "f",
+        ];
+
+        let priv_key = compute_private_key_inner(mnemonic, "").unwrap();
+        let pub_key = compute_public_key_inner(&priv_key).unwrap();
+
+        // 1
+        let signature = sign_message_inner(message, &priv_key).unwrap();
+        let valid = is_valid_signature_inner(&signature, &message, &pub_key);
+        assert_eq!(valid, true, "Signature should be valid");
+
+        // 1 tampered
+        for i in 0..replacements.len() {
+            for j in 0..replacements.len() {
+                if i == j {
+                    continue;
+                }
+                assert_eq!(
+                    is_valid_signature_inner(
+                        &signature.replace(replacements[i], replacements[j]),
+                        &message,
+                        &pub_key
+                    ),
+                    false,
+                    "Signature should be invalid"
+                )
+            }
+        }
+
+        // mixed
+        let signature = sign_message_inner("hello", &priv_key).unwrap();
+        let valid = is_valid_signature_inner(&signature, "another-different-message", &pub_key);
+        assert_eq!(valid, false, "Signature should be invalid");
+
+        let signature = sign_message_inner("message-1234", &priv_key).unwrap();
+        let valid = is_valid_signature_inner(&signature, "random-message-here", &pub_key);
+        assert_eq!(valid, false, "Signature should be invalid");
+
+        // 2
+        let message = "àèìòù";
+
+        let signature = sign_message_inner(message, &priv_key).unwrap();
+        let valid = is_valid_signature_inner(&signature, &message, &pub_key);
+        assert_eq!(valid, true, "Signature should be valid");
+
+        // 2 tampered
+        for i in 0..replacements.len() {
+            for j in 0..replacements.len() {
+                if i == j {
+                    continue;
+                }
+                assert_eq!(
+                    is_valid_signature_inner(
+                        &signature.replace(replacements[i], replacements[j]),
+                        &message,
+                        &pub_key
+                    ),
+                    false,
+                    "Signature should be invalid"
+                )
+            }
+        }
     }
 }
