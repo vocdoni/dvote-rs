@@ -1,7 +1,8 @@
 extern crate num_bigint;
 
 use super::util::decode_hex_string;
-use ethsign::SecretKey;
+use super::wallet::serialize_compressed_public_key;
+use ethsign::{PublicKey, SecretKey};
 use sha3::{Digest, Keccak256};
 
 pub const ETHEREUM_SIGNATURE_PREFIX: &str = "\x19Ethereum Signed Message:\n";
@@ -48,8 +49,7 @@ pub fn recover_signer(hex_signature: &str, message: &str) -> Result<String, Stri
         .recover(&payload_hash)
         .map_err(|err| format!("Cannot recover the public key: {}", err))?;
 
-    let public_key = hex::encode(public_key.bytes().as_ref());
-    Ok(format!("04{}", public_key))
+    Ok(serialize_compressed_public_key(public_key))
 }
 
 /// Checks if the given message was signed by hex_public_key by verifying hex_signature
@@ -59,6 +59,27 @@ pub fn is_valid(hex_signature: &str, message: &str, hex_public_key: &str) -> boo
         &hex_public_key[2..]
     } else {
         hex_public_key
+    };
+
+    // Check hex string validity
+    match decode_hex_string(&hex_public_key[2..]) {
+        Err(_) => {
+            return false;
+        }
+        _ => {}
+    };
+
+    // Compress if not already
+    let hex_public_key: String = if hex_public_key.starts_with("04") {
+        let public_key_bytes = decode_hex_string(&hex_public_key[2..]).unwrap();
+        let public_key_result = PublicKey::from_slice(public_key_bytes.as_slice());
+        if !public_key_result.is_ok() {
+            return false;
+        }
+        let public_key = public_key_result.unwrap();
+        serialize_compressed_public_key(public_key)
+    } else {
+        String::from(hex_public_key)
     };
 
     match recover_signer(hex_signature, message) {
@@ -94,7 +115,7 @@ fn pack_signature_message(payload: &str) -> Vec<u8> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::wallet::{compute_private_key, compute_public_key};
+    use crate::wallet::{compute_private_key, compute_public_key, compute_public_key_uncompressed};
 
     #[test]
     fn should_sign_string_messages() {
@@ -128,9 +149,15 @@ mod tests {
         ];
 
         let priv_key = compute_private_key(mnemonic, "").unwrap();
-        let pub_key = compute_public_key(&priv_key).unwrap();
 
         // 1
+        let pub_key = compute_public_key(&priv_key).unwrap();
+        let signature = sign_message(message, &priv_key).unwrap();
+        let valid = is_valid(&signature, &message, &pub_key);
+        assert_eq!(valid, true, "Signature should be valid");
+
+        // 1 compressed
+        let pub_key = compute_public_key_uncompressed(&priv_key).unwrap();
         let signature = sign_message(message, &priv_key).unwrap();
         let valid = is_valid(&signature, &message, &pub_key);
         assert_eq!(valid, true, "Signature should be valid");
@@ -165,6 +192,14 @@ mod tests {
         // 2
         let message = "àèìòù";
 
+        // 2
+        let pub_key = compute_public_key(&priv_key).unwrap();
+        let signature = sign_message(message, &priv_key).unwrap();
+        let valid = is_valid(&signature, &message, &pub_key);
+        assert_eq!(valid, true, "Signature should be valid");
+
+        // 2 compressed
+        let pub_key = compute_public_key_uncompressed(&priv_key).unwrap();
         let signature = sign_message(message, &priv_key).unwrap();
         let valid = is_valid(&signature, &message, &pub_key);
         assert_eq!(valid, true, "Signature should be valid");
