@@ -37,10 +37,12 @@ pub fn recover_signer(hex_signature: &str, message: &str) -> Result<String, Stri
     r.copy_from_slice(&signature[0..32]);
     let mut s: [u8; 32] = [0; 32];
     s.copy_from_slice(&signature[32..64]);
-    if signature[64] < 0x1b {
-        return Err("V should be either 0x1b or 0x1c".to_string());
-    }
-    let v: u8 = signature[64] - 0x1b;
+
+    let v: u8 = if signature[64] >= 0x1b {
+        signature[64] - 0x1b
+    } else {
+        signature[64]
+    };
 
     let signature = ethsign::Signature { r, s, v };
     let payload_hash = hash_signature_message(message);
@@ -257,5 +259,34 @@ mod tests {
             let result_pub_key = recover_signer(&signature, &tampered_message).unwrap();
             assert_ne!(result_pub_key, pub_key, "Signer should not match");
         }
+    }
+
+    #[test]
+    fn should_accept_signatures_with_both_v_values() {
+        let priv_key = "0x6516df261eabe7cf8dd59fb605ec55fb38bfc1b08bb908ea7d96b119bd5e1f4c";
+        let expected_pub_key = compute_public_key(&priv_key).unwrap();
+        let message = "hello";
+
+        // 1 ending with 1b-1c
+        let signature = "2da51ebca0722c10b12d92df848033b65238882979939aab5fb82be765ef62cd7acf82747fcab8b8a3e5b7ae619a4cb694aef04b7c6a7c4e5ac2cd91da1689181c";
+        let result_pub_key = recover_signer(&signature, &message).unwrap();
+        assert_eq!(result_pub_key, expected_pub_key, "Signer should match");
+
+        // 1 ending with 0-1
+        let signature = "2da51ebca0722c10b12d92df848033b65238882979939aab5fb82be765ef62cd7acf82747fcab8b8a3e5b7ae619a4cb694aef04b7c6a7c4e5ac2cd91da16891801";
+        let result_pub_key = recover_signer(&signature, &message).unwrap();
+        assert_eq!(result_pub_key, expected_pub_key, "Signer should match");
+
+        let message = "1234";
+
+        // 2 ending with 1b-1c
+        let signature = "df151ca720ed52f559a095119a6c983498c5f06418e58f7b10034f1ec18d7367789595d0f469a7a07ff63a2da7ffd960feca7b8d3efb4adfae948f5394895b621b";
+        let result_pub_key = recover_signer(&signature, &message).unwrap();
+        assert_eq!(result_pub_key, expected_pub_key, "Signer should match");
+
+        // 2 ending with 0-1
+        let signature = "df151ca720ed52f559a095119a6c983498c5f06418e58f7b10034f1ec18d7367789595d0f469a7a07ff63a2da7ffd960feca7b8d3efb4adfae948f5394895b6200";
+        let result_pub_key = recover_signer(&signature, &message).unwrap();
+        assert_eq!(result_pub_key, expected_pub_key, "Signer should match");
     }
 }
