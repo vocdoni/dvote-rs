@@ -37,6 +37,7 @@ pub fn compute_private_key(phrase: &str, hd_path: &str) -> Result<String, String
 
     let secret_key_bytes =
         ExtendedPrivKey::derive(seed_bytes, hd_path).map_err(|_| "Invalid HD path".to_string())?;
+
     // Byte array of the secp256k1 secret key
     Ok(hex::encode(secret_key_bytes.secret()))
 }
@@ -263,6 +264,27 @@ mod tests {
         );
         let address = compute_address(&priv_key).unwrap();
         assert_eq!(address, "0x34E3b8a0299dc7Dc53de09ce8361b41A7D888EC4");
+
+        // 5
+        let priv_key = compute_private_key(
+            "return guide exotic stem lazy cancel stamp company purse useless pact affair ripple intact destroy finish kite muffin",
+            "",
+        )
+        .unwrap();
+        assert_eq!(
+            priv_key,
+            "c6fd4b75573df00fd8713c5cce929ec41c57398fe9de99eece6b9807132a3b6b",
+        );
+        let pub_key = compute_public_key_uncompressed(&priv_key).unwrap();
+        assert_eq!(pub_key,
+        "04ac5bf23ace5fc335c3aa86f47e4f57ec60ef44b5411626340a98b1bc3cf6bc30ccb646953bc03a2deaad31bfc54779e6e58398f5ac143adaa01696a3984881fa");
+        let pub_key = compute_public_key(&priv_key).unwrap();
+        assert_eq!(
+            pub_key,
+            "02ac5bf23ace5fc335c3aa86f47e4f57ec60ef44b5411626340a98b1bc3cf6bc30"
+        );
+        let address = compute_address(&priv_key).unwrap();
+        assert_eq!(address, "0xC0dfb272D07e70955EF949DFD951913FDA737d7A");
     }
 
     #[test]
