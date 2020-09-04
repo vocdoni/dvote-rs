@@ -1,6 +1,6 @@
 [package]
 name = "dvote-rs"
-version = "0.6.1"
+version = "0.6.2"
 authors = ["dappfuse <5128827-dappfuse@users.noreply.gitlab.com>"]
 edition = "2018"
 
@@ -11,8 +11,11 @@ name = "dvote"
 hex = "0.4.2"
 base64 = "0.12.3"
 poseidon-rs = { git = "https://github.com/arnaucube/poseidon-rs", rev = "4cba42e76ae1bad266bead39499112d4284840a6" }
-num-bigint = "0.2.6"
-tiny-bip39 = "0.7.3"
-tiny-hderive = "0.2.1"
-ethsign = "0.7.3"
-sha3 = "0.9.1"
+num-bigint = "0.2.6" # used for hashing and sining
+tiny-bip39 = "0.7.3" # used on the Ethereum wallet
+tiny-hderive = "0.2.1" # used on the Ethereum wallet
+ethsign = "0.7.3" # used on the Ethereum wallet
+sha3 = "0.9.1" # used for keccak256
+sodalite = "0.4.0" # used for NaCl SecretBox
+sha2 = "0.4.2" # used to hash passphrases for symmetric encryption
+rand = "0.7" # used to generate random nonces

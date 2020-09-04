@@ -1,5 +1,9 @@
 # DVote Rust
 
+### 0.6.2
+
+- Adding support for symmetric encryption using SecretBox (libsodium)
+
 ### 0.6.1
 
 - Supporting signatures with `v` values of `0x1b-0x1c` and `0x00-0x01`
