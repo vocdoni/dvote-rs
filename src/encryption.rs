@@ -1,5 +1,3 @@
-extern crate rand;
-
 pub mod symmetric {
     use rand::{thread_rng, RngCore};
     use sha2::{Digest, Sha256};
