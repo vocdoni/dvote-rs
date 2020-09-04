@@ -172,9 +172,9 @@ mod tests {
 
         let encrypted_bytes = base64::decode(encrypted_b64).unwrap();
         let decrypted_message = decrypt(&encrypted_bytes, passphrase).unwrap();
+        assert_eq!(decrypted_message, expected_message);
 
         // 4
-        assert_eq!(decrypted_message, expected_message);
         let encrypted_b64 = "OGiaEN1OpjOywrXCOpyluzRDTsPo8bahvKdJZL7zcXBj6hxxuJ+lJ03jSUkQd7ghQ5gBiNfSq9PETNb/6ZpT++rj1h4ROLU/TCsZWLwquET9FGLKG4GW15X+EYIqKFDLPHiPulE4skKlH/2d";
         let passphrase = "Ultra top secret";
         let expected_message =

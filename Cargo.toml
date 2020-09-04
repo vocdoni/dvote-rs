@@ -1,7 +1,7 @@
 [package]
 name = "dvote-rs"
 version = "0.6.2"
-authors = ["dappfuse <5128827-dappfuse@users.noreply.gitlab.com>"]
+authors = ["Jør∂¡ <itsbrickpop@gmail.com>"]
 edition = "2018"
 
 [lib]
